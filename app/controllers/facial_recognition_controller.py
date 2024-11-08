@@ -1,15 +1,28 @@
-from flask import Blueprint, request, jsonify
-from app.services.facial_recognition_service import FacialRecognitionService
+# controllers/facial_recognition_controller.py
+from flask import Blueprint, jsonify
+from app.utils.emotion_recognition import EmotionRecognition
+import cv2
 
 facial_recognition_bp = Blueprint('facial_recognition', __name__)
+emotion_recognition = EmotionRecognition()
 
-@facial_recognition_bp.route('/recognize', methods=['POST'])
-def recognize():
-    data = request.get_json()
-    face_data = data.get('face_data')
-    if not face_data:
-        return jsonify({"error": "No face data provided"}), 400
+@facial_recognition_bp.route('/facial_recognition/stream', methods=['GET'])
+def stream():
+    # Abrir cámara
+    cap = cv2.VideoCapture(0)  # Cámara integrada
+    if not cap.isOpened():
+        return jsonify({"error": "No se pudo acceder a la cámara"}), 500
 
-    # Llama al servicio para procesar los datos faciales
-    response = FacialRecognitionService.process_face_data(face_data)
-    return jsonify(response)
+    try:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            # Procesar cada fotograma
+            response = emotion_recognition.detect_emotion(frame)
+            print(response)  # Mostrar emoción detectada en consola (temporal)
+
+        return jsonify({"message": "Streaming finalizado"})
+    finally:
+        cap.release()
